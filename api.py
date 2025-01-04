@@ -5,6 +5,8 @@ from stem import Signal
 from stem.control import Controller
 import time
 import socket
+import random
+from fake_useragent import UserAgent
 
 app = Flask(__name__)
 
@@ -14,6 +16,12 @@ logging.basicConfig(level=logging.INFO)
 # Telegram Bot API Config
 TELEGRAM_BOT_TOKEN = "7589530658:AAGnFADkXaUvBU3i2x84B4SJ0lVEXj4wa_M"
 TELEGRAM_CHAT_ID = "-1002420912833"
+
+# Counter to track the number of requests
+request_counter = 0
+
+# Initialize UserAgent object to get random User-Agents
+ua = UserAgent()
 
 def send_telegram_message(message):
     telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -41,6 +49,8 @@ def get_current_ip():
         return None
 
 def make_request(url, headers, data=None):
+    global request_counter
+
     # Configure the requests library to use the Tor network
     proxies = {
         'http': 'socks5h://127.0.0.1:9050',
@@ -48,15 +58,25 @@ def make_request(url, headers, data=None):
     }
 
     try:
-        old_ip = get_current_ip()
-        renew_tor_ip()  # Request a new IP address
-        new_ip = get_current_ip()
+        # Increase request counter
+        request_counter += 1
 
-        if old_ip and new_ip and old_ip != new_ip:
-            logging.info(f"IP changed from {old_ip} to {new_ip}")
-            send_telegram_message(f"IP changed from {old_ip} to {new_ip}")
-        else:
-            logging.info("IP did not change")
+        # Check if it's time to change the IP
+        if request_counter >= random.randint(10, 20):
+            old_ip = get_current_ip()
+            renew_tor_ip()  # Request a new IP address
+            new_ip = get_current_ip()
+
+            if old_ip and new_ip and old_ip != new_ip:
+                logging.info(f"IP changed from {old_ip} to {new_ip}")
+                send_telegram_message(f"IP changed from {old_ip} to {new_ip}")
+            else:
+                logging.info("IP did not change")
+
+            request_counter = 0
+
+        # Set a random User-Agent using fake_useragent
+        headers["User-Agent"] = ua.random
 
         if data:
             response = requests.post(url, headers=headers, data=data, proxies=proxies)
@@ -92,7 +112,7 @@ def fetch_vehicle_info():
                 "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImJiMjUyMWRmLTAzYjktNGU2MS1hMzNlLTQzZDBiZTRjOGUwMiIsInV1aWQiOiIzYjlhMGZhOC1hODlkLTRhYjctYjM4Ny1jNTljODhhNWJkNjgiLCJpYXQiOjE3MzQ5NTcxODgsImV4cCI6MTczNzU0OTE4OH0.G4aiNOPkMXahu4BIhWxGit3hCkhXTW3kRoklbPWJWSM",
                 "accept-encoding": "gzip",
                 "cookie": "__cf_bm=_WkTk0O1X65vvLDxuBZnD1Vm2.LSfVXWHHmxyTcEAqI-1734957156-1.0.1.1-LHemmmQ.HpwLTffi8KV1fYvIo3P2vCIj0oDqlJxDHWIvXTrA752ZC6vBrenioCvIdZkBuZhiF4DE5HQe9jdVdA",
-                "user-agent": "okhttp/4.12.0",
+                "user-agent": ua.random,  # Use random User-Agent
             }
             response = make_request(target_url, headers)
         elif regNo:
@@ -104,7 +124,7 @@ def fetch_vehicle_info():
                 "Host": "vahanmaster.com",
                 "Connection": "Keep-Alive",
                 "Accept-Encoding": "gzip",
-                "User-Agent": "okhttp/3.10.0",
+                "User-Agent": ua.random,  # Use random User-Agent
             }
             body = {"reg_no": regNo}
             response = make_request(target_url, headers, data=body)
