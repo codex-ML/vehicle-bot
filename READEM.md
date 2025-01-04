@@ -1,4 +1,23 @@
 # apis
+
+sudo apt update
+sudo apt install apt-transport-https
+
+curl -s https://deb.torproject.org/torproject.org/keys.asc | gpg --dearmor > /usr/share/keyrings/tor-archive-keyring.gpg
+
+
+echo "deb [signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] https://deb.torproject.org/torproject.org focal main" | sudo tee /etc/apt/sources.list.d/torproject.list
+
+sudo apt update
+
+sudo apt install tor deb.torproject.org-keyring
+
+sudo systemctl start tor
+
+sudo systemctl enable tor
+
+sudo systemctl status tor
+
 sudo service tor start
 
 ControlPort 9051
